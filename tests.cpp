@@ -1,5 +1,6 @@
 #include "signals.h"
-#include "gtest/gtest.h"
+
+#include <gtest/gtest.h>
 
 TEST(signal_testing, trivial) {
   signals::signal<void()> sig;
@@ -156,12 +157,13 @@ TEST(signal_testing, recursive_emit) {
   uint32_t got2 = 0;
   auto conn2 = sig->connect([&] {
     ++got2;
-    if (got2 == 1)
+    if (got2 == 1) {
       (*sig)();
-    else if (got2 == 2)
+    } else if (got2 == 2) {
       sig.reset();
-    else
+    } else {
       assert(false);
+    }
   });
   uint32_t got3 = 0;
   auto conn3 = sig->connect([&] { ++got3; });
@@ -180,10 +182,11 @@ TEST(signal_testing, exception_in_emit) {
   uint32_t got2 = 0;
   auto conn2 = sig->connect([&] {
     ++got2;
-    if (got2 == 1)
+    if (got2 == 1) {
       (*sig)();
-    else if (got2 == 2)
+    } else if (got2 == 2) {
       throw test_exception();
+    }
   });
   uint32_t got3 = 0;
   auto conn3 = sig->connect([&] { ++got3; });

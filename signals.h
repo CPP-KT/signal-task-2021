@@ -1,4 +1,5 @@
 #pragma once
+
 #include <functional>
 
 // Чтобы не было коллизий с UNIX-сигналами реализация вынесена в неймспейс, по
@@ -14,8 +15,8 @@ struct signal<void(Args...)> {
 
   signal();
 
-  signal(signal const&) = delete;
-  signal& operator=(signal const&) = delete;
+  signal(const signal&) = delete;
+  signal& operator=(const signal&) = delete;
 
   ~signal();
 
