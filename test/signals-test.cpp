@@ -255,8 +255,3 @@ TEST(signal_testing, move_in_emit_02) {
   sig();
   EXPECT_EQ(1, got1);
 }
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

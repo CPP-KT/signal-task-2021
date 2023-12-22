@@ -2,8 +2,6 @@
 
 #include <functional>
 
-// Чтобы не было коллизий с UNIX-сигналами реализация вынесена в неймспейс, по
-// той же причине изменено и название файла
 namespace signals {
 
 template <typename T>
