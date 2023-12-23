@@ -9,7 +9,9 @@ struct signal;
 
 template <typename... Args>
 struct signal<void(Args...)> {
-  struct connection;
+  struct connection {
+    void disconnect() noexcept;
+  };
 
   signal();
 
