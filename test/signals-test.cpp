@@ -157,6 +157,37 @@ TEST(signal_test, disconnect_inside_emit) {
   EXPECT_EQ(2, got3);
 }
 
+TEST(signal_test, disconnect_other_connection_inside_emit) {
+  using connection = signals::signal<void()>::connection;
+  signals::signal<void()> sig;
+  uint32_t got1 = 0;
+  connection conn1 = sig.connect([&] { ++got1; });
+  connection conn3;
+  connection conn4;
+  uint32_t got2 = 0;
+  [[maybe_unused]] connection conn2 = sig.connect([&] {
+    ++got2;
+    conn1.disconnect();
+    conn3.disconnect();
+    conn4.disconnect();
+  });
+  uint32_t got3 = 0;
+  conn3 = sig.connect([&] { ++got3; });
+  uint32_t got4 = 0;
+  conn4 = sig.connect([&] { ++got4; });
+
+  sig();
+
+  EXPECT_EQ(1, got2);
+
+  sig();
+
+  EXPECT_LE(0, got1);
+  EXPECT_EQ(2, got2);
+  EXPECT_LE(0, got3);
+  EXPECT_LE(0, got4);
+}
+
 TEST(signal_test, connection_destructor_inside_emit) {
   using connection = signals::signal<void()>::connection;
   signals::signal<void()> sig;
@@ -181,6 +212,37 @@ TEST(signal_test, connection_destructor_inside_emit) {
   EXPECT_EQ(2, got1);
   EXPECT_EQ(1, got2);
   EXPECT_EQ(2, got3);
+}
+
+TEST(signal_test, another_connection_destructor_inside_emit) {
+  using connection = signals::signal<void()>::connection;
+  signals::signal<void()> sig;
+  uint32_t got1 = 0;
+  [[maybe_unused]] auto conn1 = sig.connect([&] { ++got1; });
+  uint32_t got2 = 0;
+  std::unique_ptr<connection> conn3;
+  [[maybe_unused]] auto cnn2 = sig.connect([&] {
+    ++got2;
+    conn3.reset();
+  });
+  uint32_t got3 = 0;
+  conn3 = std::make_unique<connection>(sig.connect([&] { ++got3; }));
+  uint32_t got4 = 0;
+  [[maybe_unused]] auto conn4 = sig.connect([&] { ++got4; });
+
+  sig();
+
+  EXPECT_EQ(1, got1);
+  EXPECT_EQ(1, got2);
+  EXPECT_EQ(0, got3);
+  EXPECT_EQ(1, got4);
+
+  sig();
+
+  EXPECT_EQ(2, got1);
+  EXPECT_EQ(2, got2);
+  EXPECT_EQ(0, got3);
+  EXPECT_EQ(2, got4);
 }
 
 TEST(signal_test, disconnect_before_emit) {
@@ -251,6 +313,45 @@ TEST(signal_test, recursive_emit) {
   (*sig)();
 
   EXPECT_EQ(2, got2);
+}
+
+TEST(signal_test, mutual_recursion) {
+  using connection = signals::signal<void()>::connection;
+  signals::signal<void()> sig;
+  uint32_t got1 = 0;
+  [[maybe_unused]] auto conn1 = sig.connect([&] { ++got1; });
+  uint32_t got2 = 0;
+  connection conn3;
+  [[maybe_unused]] auto conn2 = sig.connect([&] {
+    ++got2;
+    if (got2 == 1) {
+      sig();
+    } else if (got2 == 2) {
+      // do nothing
+    } else if (got2 == 3) {
+      conn3.disconnect();
+    } else {
+      FAIL() << "This branch should never execute";
+    }
+  });
+  uint32_t got3 = 0;
+  conn3 = sig.connect([&] {
+    ++got3;
+    if (got3 == 1 && got2 == 2) {
+      sig();
+    } else {
+      FAIL() << "This branch should never execute";
+    }
+  });
+  uint32_t got4 = 0;
+  [[maybe_unused]] auto conn4 = sig.connect([&] { ++got4; });
+
+  sig();
+
+  EXPECT_EQ(3, got1);
+  EXPECT_EQ(3, got2);
+  EXPECT_EQ(1, got3);
+  EXPECT_EQ(3, got4);
 }
 
 TEST(signal_test, exception_inside_emit) {
