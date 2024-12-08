@@ -3,7 +3,6 @@
 #include <gtest/gtest.h>
 
 #include <exception>
-#include <memory>
 #include <optional>
 #include <utility>
 
