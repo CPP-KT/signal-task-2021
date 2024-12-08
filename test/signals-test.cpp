@@ -2,6 +2,11 @@
 
 #include <gtest/gtest.h>
 
+#include <exception>
+#include <memory>
+#include <optional>
+#include <utility>
+
 TEST(signal_test, trivial) {
   signals::signal<void()> sig;
   uint32_t got1 = 0;
@@ -56,6 +61,12 @@ TEST(signal_test, arguments_forwarding) {
   sig(a, nc(6), nc(7), nc(8));
 }
 
+TEST(signal_test, empty_signal_move) {
+  signals::signal<void()> a;
+  signals::signal<void()> b = std::move(a);
+  b = std::move(b);
+}
+
 TEST(signal_test, empty_connection_move) {
   signals::signal<void()>::connection a;
   signals::signal<void()>::connection b = std::move(a);
@@ -103,6 +114,55 @@ TEST(signal_test, function_destroyed_after_disconnect) {
   EXPECT_TRUE(destroyed);
 }
 
+TEST(signal_test, signal_move_ctor) {
+  signals::signal<void()> sig_old;
+  uint32_t got1 = 0;
+  [[maybe_unused]] auto conn1 = sig_old.connect([&] { ++got1; });
+
+  signals::signal<void()> sig_new = std::move(sig_old);
+
+  sig_new();
+
+  EXPECT_EQ(got1, 1);
+
+  sig_old();
+
+  EXPECT_EQ(got1, 1);
+}
+
+TEST(signal_test, signal_move_assign) {
+  signals::signal<void()> sig1;
+  uint32_t got1 = 0;
+  [[maybe_unused]] auto conn1 = sig1.connect([&] { ++got1; });
+
+  signals::signal<void()> sig2;
+  uint32_t got2 = 0;
+  [[maybe_unused]] auto conn2 = sig2.connect([&] { ++got2; });
+
+  sig2 = std::move(sig1);
+
+  sig2();
+
+  EXPECT_EQ(got1, 1);
+  EXPECT_EQ(got2, 0);
+
+  sig1();
+
+  EXPECT_EQ(got1, 1);
+}
+
+TEST(signal_test, signal_move_assign_self) {
+  signals::signal<void()> sig1;
+  uint32_t got1 = 0;
+  [[maybe_unused]] auto conn1 = sig1.connect([&] { ++got1; });
+
+  sig1 = std::move(sig1);
+
+  sig1();
+
+  EXPECT_EQ(got1, 1);
+}
+
 TEST(signal_test, connection_move_ctor) {
   signals::signal<void()> sig;
   uint32_t got1 = 0;
@@ -114,10 +174,37 @@ TEST(signal_test, connection_move_ctor) {
   EXPECT_EQ(got1, 1);
 }
 
+TEST(signal_test, connection_move_assign) {
+  signals::signal<void()> sig;
+  uint32_t got1 = 0;
+  uint32_t got2 = 0;
+  auto conn1 = sig.connect([&] { ++got1; });
+  auto conn2 = sig.connect([&] { ++got2; });
+
+  conn2 = std::move(conn1);
+
+  sig();
+
+  EXPECT_EQ(got1, 1);
+  EXPECT_EQ(got2, 0);
+}
+
+TEST(signal_test, connection_move_assign_self) {
+  signals::signal<void()> sig;
+  uint32_t got1 = 0;
+  auto conn1 = sig.connect([&] { ++got1; });
+
+  conn1 = std::move(conn1);
+
+  sig();
+
+  EXPECT_EQ(got1, 1);
+}
+
 TEST(signal_test, connection_destructor) {
   signals::signal<void()> sig;
   uint32_t got1 = 0;
-  auto conn1 = std::make_unique<signals::signal<void()>::connection>(sig.connect([&] { ++got1; }));
+  auto conn1 = std::optional(sig.connect([&] { ++got1; }));
   uint32_t got2 = 0;
   [[maybe_unused]] auto conn2 = sig.connect([&] { ++got2; });
 
@@ -196,10 +283,10 @@ TEST(signal_test, connection_destructor_inside_emit) {
   uint32_t got1 = 0;
   [[maybe_unused]] auto conn1 = sig.connect([&] { ++got1; });
   uint32_t got2 = 0;
-  std::unique_ptr<connection> conn2 = std::make_unique<connection>(sig.connect([&] {
+  std::optional<connection> conn2 = sig.connect([&] {
     ++got2;
     conn2.reset();
-  }));
+  });
   uint32_t got3 = 0;
   [[maybe_unused]] auto conn3 = sig.connect([&] { ++got3; });
 
@@ -222,13 +309,13 @@ TEST(signal_test, another_connection_destructor_inside_emit) {
   uint32_t got1 = 0;
   [[maybe_unused]] auto conn1 = sig.connect([&] { ++got1; });
   uint32_t got2 = 0;
-  std::unique_ptr<connection> conn3;
-  [[maybe_unused]] auto cnn2 = sig.connect([&] {
+  std::optional<connection> conn3;
+  [[maybe_unused]] auto conn2 = sig.connect([&] {
     ++got2;
     conn3.reset();
   });
   uint32_t got3 = 0;
-  conn3 = std::make_unique<connection>(sig.connect([&] { ++got3; }));
+  conn3 = std::optional(sig.connect([&] { ++got3; }));
   uint32_t got4 = 0;
   [[maybe_unused]] auto conn4 = sig.connect([&] { ++got4; });
 
@@ -258,7 +345,7 @@ TEST(signal_test, disconnect_before_emit) {
 }
 
 TEST(signal_test, destroy_signal_before_connection_01) {
-  auto sig = std::make_unique<signals::signal<void()>>();
+  std::optional<signals::signal<void()>> sig(std::in_place);
   uint32_t got1 = 0;
   [[maybe_unused]] auto conn1 = sig->connect([&] { ++got1; });
 
@@ -266,7 +353,7 @@ TEST(signal_test, destroy_signal_before_connection_01) {
 }
 
 TEST(signal_test, destroy_signal_before_connection_02) {
-  auto sig = std::make_unique<signals::signal<void()>>();
+  std::optional<signals::signal<void()>> sig(std::in_place);
   uint32_t got1 = 0;
   auto conn1_old = sig->connect([&] { ++got1; });
 
@@ -278,7 +365,7 @@ TEST(signal_test, destroy_signal_before_connection_02) {
 TEST(signal_test, destroy_signal_inside_emit) {
   using connection = signals::signal<void()>::connection;
 
-  auto sig = std::make_unique<signals::signal<void()>>();
+  std::optional<signals::signal<void()>> sig(std::in_place);
   uint32_t got1 = 0;
   [[maybe_unused]] connection conn1(sig->connect([&] { ++got1; }));
   uint32_t got2 = 0;
@@ -295,7 +382,7 @@ TEST(signal_test, destroy_signal_inside_emit) {
 }
 
 TEST(signal_test, recursive_emit) {
-  auto sig = std::make_unique<signals::signal<void()>>();
+  std::optional<signals::signal<void()>> sig(std::in_place);
   uint32_t got1 = 0;
   [[maybe_unused]] auto conn1 = sig->connect([&] { ++got1; });
   uint32_t got2 = 0;
@@ -421,12 +508,13 @@ TEST(signal_test, move_connection_inside_emit) {
 
   signals::signal<void()> sig;
   uint32_t got1 = 0;
-  std::unique_ptr<connection> conn1_new;
+  connection conn1_new;
 
-  connection conn1_old = sig.connect([&] {
+  std::optional<connection> conn1_old = sig.connect([&] {
     ++got1;
     if (got1 == 1) {
-      conn1_new = std::make_unique<connection>(std::move(conn1_old));
+      conn1_new = std::move(*conn1_old);
+      conn1_old.reset();
     }
   });
 
@@ -443,28 +531,55 @@ TEST(signal_test, move_other_connection_inside_emit) {
   signals::signal<void()> sig;
 
   uint32_t got1 = 0;
-  std::unique_ptr<connection> conn1_old;
-  std::unique_ptr<connection> conn1_new;
+  std::optional<connection> conn1_old;
+  std::optional<connection> conn1_new;
 
   uint32_t got3 = 0;
-  std::unique_ptr<connection> conn3_old;
-  std::unique_ptr<connection> conn3_new;
+  std::optional<connection> conn3_old;
+  std::optional<connection> conn3_new;
 
-  conn1_old = std::make_unique<connection>(sig.connect([&] { ++got1; }));
+  conn1_old = sig.connect([&] { ++got1; });
 
   uint32_t got2 = 0;
   [[maybe_unused]] connection conn2 = sig.connect([&] {
     ++got2;
-    conn1_new = std::make_unique<connection>(std::move(*conn1_old));
-    conn3_new = std::make_unique<connection>(std::move(*conn3_old));
+    conn1_new = std::move(*conn1_old);
+    conn3_new = std::move(*conn3_old);
     conn1_old.reset();
     conn3_old.reset();
   });
 
-  conn3_old = std::make_unique<connection>(sig.connect([&] { ++got3; }));
+  conn3_old = sig.connect([&] { ++got3; });
 
   sig();
   EXPECT_EQ(got1, 1);
   EXPECT_EQ(got2, 1);
   EXPECT_EQ(got3, 1);
+}
+
+TEST(signal_test, move_signal_inside_emit) {
+  using connection = signals::signal<void()>::connection;
+
+  std::optional<signals::signal<void()>> sig_old(std::in_place);
+  signals::signal<void()> sig_new;
+
+  uint32_t got1 = 0;
+  [[maybe_unused]] connection conn1 = sig_old->connect([&] {
+    ++got1;
+    if (got1 == 1) {
+      sig_new = std::move(*sig_old);
+      sig_old.reset();
+    }
+  });
+
+  uint32_t got2 = 0;
+  connection conn2 = sig_old->connect([&] { ++got2; });
+
+  (*sig_old)();
+  EXPECT_EQ(got1, 1);
+  EXPECT_EQ(got2, 1);
+
+  sig_new();
+  EXPECT_EQ(got1, 2);
+  EXPECT_EQ(got2, 2);
 }
