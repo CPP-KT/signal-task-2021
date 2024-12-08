@@ -11,21 +11,21 @@ TEST(signal_test, trivial) {
 
   sig();
 
-  EXPECT_EQ(1, got1);
-  EXPECT_EQ(1, got2);
+  EXPECT_EQ(got1, 1);
+  EXPECT_EQ(got2, 1);
 
   sig();
 
-  EXPECT_EQ(2, got1);
-  EXPECT_EQ(2, got2);
+  EXPECT_EQ(got1, 2);
+  EXPECT_EQ(got2, 2);
 }
 
 TEST(signal_test, arguments) {
   signals::signal<void(int, int, int)> sig;
   [[maybe_unused]] auto conn = sig.connect([](int a, int b, int c) {
-    EXPECT_EQ(5, a);
-    EXPECT_EQ(6, b);
-    EXPECT_EQ(7, c);
+    EXPECT_EQ(a, 5);
+    EXPECT_EQ(b, 6);
+    EXPECT_EQ(c, 7);
   });
 
   sig(5, 6, 7);
@@ -46,10 +46,10 @@ TEST(signal_test, arguments_forwarding) {
 
   signals::signal<void(nc&, nc&&, const nc&, const nc&&)> sig;
   [[maybe_unused]] auto conn = sig.connect([](nc& a, nc&& b, const nc& c, const nc&& d) {
-    EXPECT_EQ(5, a.value);
-    EXPECT_EQ(6, b.value);
-    EXPECT_EQ(7, c.value);
-    EXPECT_EQ(8, d.value);
+    EXPECT_EQ(a.value, 5);
+    EXPECT_EQ(b.value, 6);
+    EXPECT_EQ(c.value, 7);
+    EXPECT_EQ(d.value, 8);
   });
 
   nc a(5);
@@ -71,14 +71,14 @@ TEST(signal_test, disconnect) {
 
   sig();
 
-  EXPECT_EQ(1, got1);
-  EXPECT_EQ(1, got2);
+  EXPECT_EQ(got1, 1);
+  EXPECT_EQ(got2, 1);
 
   conn1.disconnect();
   sig();
 
-  EXPECT_EQ(1, got1);
-  EXPECT_EQ(2, got2);
+  EXPECT_EQ(got1, 1);
+  EXPECT_EQ(got2, 2);
 }
 
 TEST(signal_test, function_destroyed_after_disconnect) {
@@ -111,7 +111,7 @@ TEST(signal_test, connection_move_ctor) {
 
   sig();
 
-  EXPECT_EQ(1, got1);
+  EXPECT_EQ(got1, 1);
 }
 
 TEST(signal_test, connection_destructor) {
@@ -123,14 +123,14 @@ TEST(signal_test, connection_destructor) {
 
   sig();
 
-  EXPECT_EQ(1, got1);
-  EXPECT_EQ(1, got2);
+  EXPECT_EQ(got1, 1);
+  EXPECT_EQ(got2, 1);
 
   conn1.reset();
   sig();
 
-  EXPECT_EQ(1, got1);
-  EXPECT_EQ(2, got2);
+  EXPECT_EQ(got1, 1);
+  EXPECT_EQ(got2, 2);
 }
 
 TEST(signal_test, disconnect_inside_emit) {
@@ -148,15 +148,15 @@ TEST(signal_test, disconnect_inside_emit) {
 
   sig();
 
-  EXPECT_EQ(1, got1);
-  EXPECT_EQ(1, got2);
-  EXPECT_EQ(1, got3);
+  EXPECT_EQ(got1, 1);
+  EXPECT_EQ(got2, 1);
+  EXPECT_EQ(got3, 1);
 
   sig();
 
-  EXPECT_EQ(2, got1);
-  EXPECT_EQ(1, got2);
-  EXPECT_EQ(2, got3);
+  EXPECT_EQ(got1, 2);
+  EXPECT_EQ(got2, 1);
+  EXPECT_EQ(got3, 2);
 }
 
 TEST(signal_test, disconnect_other_connection_inside_emit) {
@@ -180,14 +180,14 @@ TEST(signal_test, disconnect_other_connection_inside_emit) {
 
   sig();
 
-  EXPECT_EQ(1, got2);
+  EXPECT_EQ(got2, 1);
 
   sig();
 
-  EXPECT_LE(0, got1);
-  EXPECT_EQ(2, got2);
-  EXPECT_LE(0, got3);
-  EXPECT_LE(0, got4);
+  EXPECT_GE(got1, 0);
+  EXPECT_EQ(got2, 2);
+  EXPECT_GE(got3, 0);
+  EXPECT_GE(got4, 0);
 }
 
 TEST(signal_test, connection_destructor_inside_emit) {
@@ -205,15 +205,15 @@ TEST(signal_test, connection_destructor_inside_emit) {
 
   sig();
 
-  EXPECT_EQ(1, got1);
-  EXPECT_EQ(1, got2);
-  EXPECT_EQ(1, got3);
+  EXPECT_EQ(got1, 1);
+  EXPECT_EQ(got2, 1);
+  EXPECT_EQ(got3, 1);
 
   sig();
 
-  EXPECT_EQ(2, got1);
-  EXPECT_EQ(1, got2);
-  EXPECT_EQ(2, got3);
+  EXPECT_EQ(got1, 2);
+  EXPECT_EQ(got2, 1);
+  EXPECT_EQ(got3, 2);
 }
 
 TEST(signal_test, another_connection_destructor_inside_emit) {
@@ -234,17 +234,17 @@ TEST(signal_test, another_connection_destructor_inside_emit) {
 
   sig();
 
-  EXPECT_EQ(1, got1);
-  EXPECT_EQ(1, got2);
-  EXPECT_EQ(0, got3);
-  EXPECT_EQ(1, got4);
+  EXPECT_EQ(got1, 1);
+  EXPECT_EQ(got2, 1);
+  EXPECT_EQ(got3, 0);
+  EXPECT_EQ(got4, 1);
 
   sig();
 
-  EXPECT_EQ(2, got1);
-  EXPECT_EQ(2, got2);
-  EXPECT_EQ(0, got3);
-  EXPECT_EQ(2, got4);
+  EXPECT_EQ(got1, 2);
+  EXPECT_EQ(got2, 2);
+  EXPECT_EQ(got3, 0);
+  EXPECT_EQ(got4, 2);
 }
 
 TEST(signal_test, disconnect_before_emit) {
@@ -291,7 +291,7 @@ TEST(signal_test, destroy_signal_inside_emit) {
 
   (*sig)();
 
-  EXPECT_EQ(1, got2);
+  EXPECT_EQ(got2, 1);
 }
 
 TEST(signal_test, recursive_emit) {
@@ -314,7 +314,7 @@ TEST(signal_test, recursive_emit) {
 
   (*sig)();
 
-  EXPECT_EQ(2, got2);
+  EXPECT_EQ(got2, 2);
 }
 
 TEST(signal_test, mutual_recursion) {
@@ -350,10 +350,10 @@ TEST(signal_test, mutual_recursion) {
 
   sig();
 
-  EXPECT_EQ(3, got1);
-  EXPECT_EQ(3, got2);
-  EXPECT_EQ(1, got3);
-  EXPECT_EQ(3, got4);
+  EXPECT_EQ(got1, 3);
+  EXPECT_EQ(got2, 3);
+  EXPECT_EQ(got3, 1);
+  EXPECT_EQ(got4, 3);
 }
 
 TEST(signal_test, exception_inside_emit) {
@@ -373,16 +373,16 @@ TEST(signal_test, exception_inside_emit) {
   [[maybe_unused]] auto conn3 = sig.connect([&] { ++got3; });
 
   EXPECT_THROW(sig(), test_exception);
-  EXPECT_EQ(1, got2);
+  EXPECT_EQ(got2, 1);
 
   got1 = 0;
   got3 = 0;
 
   sig();
 
-  EXPECT_EQ(1, got1);
-  EXPECT_EQ(2, got2);
-  EXPECT_EQ(1, got3);
+  EXPECT_EQ(got1, 1);
+  EXPECT_EQ(got2, 2);
+  EXPECT_EQ(got3, 1);
 }
 
 TEST(signal_test, exception_inside_recursive_emit) {
@@ -404,16 +404,16 @@ TEST(signal_test, exception_inside_recursive_emit) {
   [[maybe_unused]] auto conn3 = sig.connect([&] { ++got3; });
 
   EXPECT_THROW(sig(), test_exception);
-  EXPECT_EQ(2, got2);
+  EXPECT_EQ(got2, 2);
 
   got1 = 0;
   got3 = 0;
 
   sig();
 
-  EXPECT_EQ(1, got1);
-  EXPECT_EQ(3, got2);
-  EXPECT_EQ(1, got3);
+  EXPECT_EQ(got1, 1);
+  EXPECT_EQ(got2, 3);
+  EXPECT_EQ(got3, 1);
 }
 
 TEST(signal_test, move_connection_inside_emit) {
@@ -431,10 +431,10 @@ TEST(signal_test, move_connection_inside_emit) {
   });
 
   sig();
-  EXPECT_EQ(1, got1);
+  EXPECT_EQ(got1, 1);
 
   sig();
-  EXPECT_EQ(2, got1);
+  EXPECT_EQ(got1, 2);
 }
 
 TEST(signal_test, move_other_connection_inside_emit) {
@@ -464,7 +464,7 @@ TEST(signal_test, move_other_connection_inside_emit) {
   conn3_old = std::make_unique<connection>(sig.connect([&] { ++got3; }));
 
   sig();
-  EXPECT_EQ(1, got1);
-  EXPECT_EQ(1, got2);
-  EXPECT_EQ(1, got3);
+  EXPECT_EQ(got1, 1);
+  EXPECT_EQ(got2, 1);
+  EXPECT_EQ(got3, 1);
 }
