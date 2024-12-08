@@ -33,7 +33,8 @@ TEST(signal_test, arguments) {
 
 TEST(signal_test, arguments_forwarding) {
   struct non_copyable {
-    explicit non_copyable(int value) : value(value) {}
+    explicit non_copyable(int value)
+        : value(value) {}
 
     non_copyable(non_copyable&) = delete;
     non_copyable(non_copyable&&) = delete;
@@ -84,7 +85,8 @@ TEST(signal_test, function_destroyed_after_disconnect) {
   bool destroyed = false;
 
   struct conn1_guard {
-    explicit conn1_guard(bool& d) : d(d) {}
+    explicit conn1_guard(bool& d)
+        : d(d) {}
 
     ~conn1_guard() {
       d = true;
