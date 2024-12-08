@@ -5,13 +5,15 @@
 namespace signals {
 
 template <typename T>
-struct signal;
+class signal;
 
 template <typename... Args>
-struct signal<void(Args...)> {
+class signal<void(Args...)> {
+public:
   using slot = std::function<void(Args...)>;
 
-  struct connection {
+  class connection {
+  public:
     connection() noexcept;
 
     void disconnect() noexcept;
