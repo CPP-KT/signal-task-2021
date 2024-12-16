@@ -32,7 +32,36 @@ TEST(signal_test, arguments) {
     EXPECT_EQ(c, 7);
   });
 
-  sig(5, 6, 7);
+  int a = 5;
+  sig(a, 6, 7);
+}
+
+TEST(signal_test, arguments_not_moved) {
+  struct movable {
+    explicit movable(int x)
+        : x(x) {}
+
+    movable(const movable& other)
+        : x(other.x) {}
+
+    movable(movable&& other)
+        : x(std::exchange(other.x, -1)) {}
+
+    movable& operator=(const movable&) = delete;
+    movable& operator=(movable&&) = delete;
+
+    int x;
+  };
+
+  signals::signal<void(movable)> sig;
+  auto f = [](movable a) {
+    EXPECT_EQ(a.x, 5);
+  };
+
+  auto conn1 = sig.connect(f);
+  auto conn2 = sig.connect(f);
+
+  sig(movable(5));
 }
 
 TEST(signal_test, empty_signal_move) {
