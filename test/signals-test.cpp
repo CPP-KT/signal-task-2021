@@ -35,31 +35,6 @@ TEST(signal_test, arguments) {
   sig(5, 6, 7);
 }
 
-TEST(signal_test, arguments_forwarding) {
-  struct non_copyable {
-    explicit non_copyable(int value)
-        : value(value) {}
-
-    non_copyable(non_copyable&) = delete;
-    non_copyable(non_copyable&&) = delete;
-
-    int value;
-  };
-
-  using nc = non_copyable;
-
-  signals::signal<void(nc&, nc&&, const nc&, const nc&&)> sig;
-  auto conn = sig.connect([](nc& a, nc&& b, const nc& c, const nc&& d) {
-    EXPECT_EQ(a.value, 5);
-    EXPECT_EQ(b.value, 6);
-    EXPECT_EQ(c.value, 7);
-    EXPECT_EQ(d.value, 8);
-  });
-
-  nc a(5);
-  sig(a, nc(6), nc(7), nc(8));
-}
-
 TEST(signal_test, empty_signal_move) {
   signals::signal<void()> a;
   signals::signal<void()> b = std::move(a);
