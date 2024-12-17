@@ -560,6 +560,111 @@ TEST(signal_test, move_other_connection_inside_emit) {
   EXPECT_EQ(got3, 1);
 }
 
+TEST(signal_test, move_connection_to_next_inside_emit) {
+  using connection = signals::signal<void()>::connection;
+
+  signals::signal<void()> sig;
+  uint32_t got1 = 0;
+  uint32_t got2 = 0;
+  uint32_t got3 = 0;
+
+  std::optional<connection> conn2;
+
+  std::optional<connection> conn1 = sig.connect([&] {
+    ++got1;
+    if (got1 == 1) {
+      conn2 = std::move(*conn1);
+      conn1.reset();
+    }
+  });
+
+  conn2 = sig.connect([&] { ++got2; });
+
+  connection conn3 = sig.connect([&] { ++got3; });
+
+  sig();
+  EXPECT_EQ(got1, 1);
+  EXPECT_EQ(got2, 0);
+  EXPECT_EQ(got3, 1);
+
+  sig();
+  EXPECT_EQ(got1, 2);
+  EXPECT_EQ(got2, 0);
+  EXPECT_EQ(got3, 2);
+}
+
+TEST(signal_test, move_to_connection_inside_emit) {
+  using connection = signals::signal<void()>::connection;
+
+  signals::signal<void()> sig1;
+  signals::signal<void()> sig2;
+  uint32_t got1 = 0;
+  uint32_t got2 = 0;
+  uint32_t got3 = 0;
+
+  std::optional<connection> conn1 = sig1.connect([&] { ++got1; });
+
+  connection conn2 = sig2.connect([&] {
+    ++got2;
+    if (got2 == 1) {
+      std::optional<connection>& conn1_ref = conn1;
+      conn2 = std::move(*conn1);
+      conn1_ref.reset();
+    }
+  });
+
+  connection conn3 = sig2.connect([&] { ++got3; });
+
+  sig2();
+  EXPECT_EQ(got1, 0);
+  EXPECT_EQ(got2, 1);
+  EXPECT_EQ(got3, 1);
+
+  sig2();
+  EXPECT_EQ(got1, 0);
+  EXPECT_EQ(got2, 1);
+  EXPECT_EQ(got3, 2);
+
+  sig1();
+  EXPECT_EQ(got1, 1);
+  EXPECT_EQ(got2, 1);
+  EXPECT_EQ(got3, 2);
+}
+
+TEST(signal_test, move_to_connection_from_next_inside_emit) {
+  using connection = signals::signal<void()>::connection;
+
+  signals::signal<void()> sig;
+  uint32_t got1 = 0;
+  uint32_t got2 = 0;
+  uint32_t got3 = 0;
+
+  std::optional<connection> conn2;
+
+  connection conn1 = sig.connect([&] {
+    ++got1;
+    if (got1 == 1) {
+      std::optional<connection>& conn2_ref = conn2;
+      conn1 = std::move(*conn2);
+      conn2_ref.reset();
+    }
+  });
+
+  conn2 = sig.connect([&] { ++got2; });
+
+  connection conn3 = sig.connect([&] { ++got3; });
+
+  sig();
+  EXPECT_EQ(got1, 1);
+  EXPECT_EQ(got2, 1);
+  EXPECT_EQ(got3, 1);
+
+  sig();
+  EXPECT_EQ(got1, 1);
+  EXPECT_EQ(got2, 2);
+  EXPECT_EQ(got3, 2);
+}
+
 TEST(signal_test, move_signal_inside_emit) {
   using connection = signals::signal<void()>::connection;
 
