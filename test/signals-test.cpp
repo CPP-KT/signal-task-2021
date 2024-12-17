@@ -691,3 +691,30 @@ TEST(signal_test, move_signal_inside_emit) {
   EXPECT_EQ(got1, 2);
   EXPECT_EQ(got2, 2);
 }
+
+TEST(signals_test, disconnect_reentrancy_after_move) {
+
+  using connection = signals::signal<void()>::connection;
+
+  std::optional<signals::signal<void()>> sig_old(std::in_place);
+  signals::signal<void()> sig_new;
+
+  connection conn2;
+
+  uint32_t got1 = 0;
+  connection conn1 = sig_old->connect([&] {
+    ++got1;
+    conn2.disconnect();
+  });
+
+  uint32_t got2 = 0;
+  conn2 = sig_old->connect([&] { ++got2; });
+
+  sig_new = std::move(*sig_old);
+  sig_old.reset();
+
+  sig_new();
+
+  EXPECT_EQ(got1, 1);
+  EXPECT_EQ(got2, 0);
+}
