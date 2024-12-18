@@ -692,7 +692,7 @@ TEST(signal_test, move_signal_inside_emit) {
   EXPECT_EQ(got2, 2);
 }
 
-TEST(signals_test, disconnect_reentrancy_after_move) {
+TEST(signal_test, disconnect_reentrancy_after_move) {
 
   using connection = signals::signal<void()>::connection;
 
