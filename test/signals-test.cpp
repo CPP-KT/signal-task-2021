@@ -691,3 +691,46 @@ TEST(signal_test, move_signal_inside_emit) {
   EXPECT_EQ(got1, 2);
   EXPECT_EQ(got2, 2);
 }
+
+TEST(signal_test, switch_last_end_token_inside_emit) {
+  using connection = signals::signal<void()>::connection;
+
+  std::optional<signals::signal<void()>> sig_old(std::in_place);
+  signals::signal<void()> sig_new;
+
+  connection conn1 = sig_old->connect([&] {
+  });
+
+  connection conn2 = sig_old->connect([&] {
+    sig_new = std::move(*sig_old);
+    sig_old.reset();
+  });
+
+  (*sig_old)();
+  EXPECT_EQ(1, 1);
+}
+
+TEST(signal_test, switch_not_last_end_token_inside_emit) {
+  using connection = signals::signal<void()>::connection;
+
+  std::optional<signals::signal<void()>> sig_old(std::in_place);
+  signals::signal<void()> sig_new;
+
+  size_t cnt = 0;
+  connection conn1 = sig_old->connect([&] {
+    if (cnt == 1) {
+      sig_new = std::move(*sig_old);
+      sig_old.reset();
+    }
+  });
+
+  connection conn2 = sig_old->connect([&] {
+    ++cnt;
+    if (cnt == 1) {
+      (*sig_old)();
+    }
+  });
+
+  (*sig_old)();
+  EXPECT_EQ(1, 1);
+}
